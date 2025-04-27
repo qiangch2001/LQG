@@ -153,7 +153,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     # plt.grid()
     # plt.show()
 
-    # Error Plotting
+    # Error Plotting(use this version!)
     # Compute per-particle tracking error
     errors = np.linalg.norm(results['true_particles'] - results['true_stage'], axis=2)  # shape (N, T)
 
