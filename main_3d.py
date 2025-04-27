@@ -95,7 +95,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
                    for _ in range(N)]
 
     real_positions = []
-    estimated_positions = []
+    stage_positions = []
 
     for i, ctrl in enumerate(controllers):
         results['true_particles'][i,0] = true_traj[i,0]
@@ -126,20 +126,31 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
             results['est_stage'][i,t] = [est[0], est[3], est[6]]
 
             real_positions.append(true_traj[i,t])
-            estimated_positions.append(np.array([est[1], est[4], est[7]]))
+            stage_positions.append(stage_pos[i])
 
     real_positions = np.array(real_positions)
-    estimated_positions = np.array(estimated_positions)
+    stage_positions = np.array(stage_positions)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.plot(real_positions[:, 0], real_positions[:, 1], real_positions[:, 2], label='True Particle Trajectory')
-    ax.plot(estimated_positions[:, 0], estimated_positions[:, 1], estimated_positions[:, 2], '--', label='Estimated Trajectory')
+    ax.plot(stage_positions[:, 0], stage_positions[:, 1], stage_positions[:, 2], '--', label='Stage Trajectory')
     ax.set_xlabel('X (μm)')
     ax.set_ylabel('Y (μm)')
     ax.set_zlabel('Z (μm)')
     ax.legend()
     ax.set_title('3D LQG Particle Tracking')
+    plt.show()
+
+    # (Optional) Plot tracking error over time
+    error = np.linalg.norm(real_positions - stage_positions, axis=1)
+
+    plt.figure()
+    plt.plot(error)
+    plt.xlabel('Time Step')
+    plt.ylabel('Tracking Error (μm)')
+    plt.title('Tracking Error Over Time')
+    plt.grid()
     plt.show()
 
     return results
@@ -149,7 +160,7 @@ if __name__ == "__main__":
     from datagenerator_3d import BrownianParticleSimulator
 
     sim = BrownianParticleSimulator(
-        num_particles=3,
+        num_particles=1,
         duration=5,
         fps=20,
         temperature=300,
