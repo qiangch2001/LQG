@@ -91,7 +91,7 @@ def fluoro_bancroft(x_positions, y_positions, intensity_values, sigma_x, sigma_y
 def track_particles_lqg_with_fb(simulator, sampling_radius=10, num_samples=5, 
                                 lambda_x=1.0, lambda_u=0.1, 
                                 process_noise=0.1, measurement_noise=0.5,
-                                sigma_x=203e-9, sigma_y=203e-9):
+                                sigma_x=0.203, sigma_y=0.203):
     
     true_traj = simulator.simulate()
     N, T, _ = true_traj.shape
