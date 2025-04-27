@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D
 
 class LQGController:
     def __init__(self, A, B, H, Q_kf, R_kf, lambda_x=1.0, lambda_u=0.1):
@@ -55,7 +55,7 @@ class LQGController:
 
 
 def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
-                        process_noise=0.1, measurement_noise=0.5):
+                         process_noise=0.1, measurement_noise=0.5):
     true_traj = simulator.simulate()
     N, T, _ = true_traj.shape
 
@@ -71,92 +71,110 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     Ao = np.zeros((9, 9))
     for i in range(0, 9, 3):
         Ao[i, i] = 1
-        Ao[i + 1, i + 1] = 1
-        Ao[i + 2, i + 1] = dt
-        Ao[i + 2, i + 2] = 1
+        Ao[i+1, i+1] = 1
+        Ao[i+2, i+1] = dt
+        Ao[i+2, i+2] = 1
 
     Bo = np.zeros((9, 3))
     for i in range(3):
-        Bo[3 * i, i] = dt
+        Bo[3*i, i] = dt
 
     H = np.zeros((3, 9))
     for i in range(3):
-        H[i, 3 * i] = -1
-        H[i, 3 * i + 1] = 1
+        H[i, 3*i] = -1
+        H[i, 3*i+1] = 1
 
     Q_kf = np.eye(9) * process_noise
-    Q_kf[2, 2] = 2 * simulator.D * dt
-    Q_kf[5, 5] = 2 * simulator.D * dt
-    Q_kf[8, 8] = 4 * simulator.D * dt
+    Q_kf[2,2] = 2 * simulator.D * dt
+    Q_kf[5,5] = 2 * simulator.D * dt
+    Q_kf[8,8] = 2 * simulator.D * dt
     R_kf = np.eye(3) * measurement_noise
 
     controllers = [LQGController(Ao, Bo, H, Q_kf, R_kf,
                                  lambda_x=lambda_x, lambda_u=lambda_u)
                    for _ in range(N)]
 
-    real_positions = []
-    stage_positions = []
+    # real_positions = []
+    # stage_positions = []
 
-    # Initialize the true particle and stage positions to start from the true initial positions
     for i, ctrl in enumerate(controllers):
-        results['true_particles'][i, 0] = true_traj[i, 0]
-        results['true_stage'][i, 0] = true_traj[i, 0]  # Set the initial stage position to true particle position
-        stage_pos[i] = true_traj[i, 0]  # Set the initial stage position to true particle position
-
-        # Measurement with noise
-        meas = true_traj[i, 0] + np.random.normal(0, measurement_noise, 3)
-        results['measured'][i, 0] = meas
+        results['true_particles'][i,0] = true_traj[i,0]
+        results['true_stage'][i,0] = stage_pos[i]
+        meas = true_traj[i,0] - stage_pos[i] + np.random.normal(0, measurement_noise, 3)
+        results['measured'][i,0] = meas + stage_pos[i]
         ctrl.x_hat = np.zeros(9)
         ctrl.update(meas)
         est = ctrl.x_hat
-        results['est_particles'][i, 0] = [est[1], est[4], est[7]]
-        results['est_stage'][i, 0] = [est[0], est[3], est[6]]
+        results['est_particles'][i,0] = [est[1], est[4], est[7]]
+        results['est_stage'][i,0] = [est[0], est[3], est[6]]
 
     for t in range(1, T):
         for i, ctrl in enumerate(controllers):
-            ctrl.predict(results['control_inputs'][i, t - 1])
-            true_rel = true_traj[i, t] - stage_pos[i]
+            ctrl.predict(results['control_inputs'][i,t-1])
+            true_rel = true_traj[i,t] - stage_pos[i]
             meas = true_rel + np.random.normal(0, measurement_noise, 3)
             ctrl.update(meas)
             u = ctrl.control()
-            results['control_inputs'][i, t] = u
+            results['control_inputs'][i,t] = u
 
             stage_pos[i] += u * dt
-            results['true_stage'][i, t] = stage_pos[i]
-            results['true_particles'][i, t] = true_traj[i, t]
-            results['measured'][i, t] = meas + stage_pos[i]
+            results['true_stage'][i,t] = stage_pos[i]
+            results['true_particles'][i,t] = true_traj[i,t]
+            results['measured'][i,t] = meas + stage_pos[i]
             est = ctrl.x_hat
-            results['est_particles'][i, t] = [est[1], est[4], est[7]]
-            results['est_stage'][i, t] = [est[0], est[3], est[6]]
+            results['est_particles'][i,t] = [est[1], est[4], est[7]]
+            results['est_stage'][i,t] = [est[0], est[3], est[6]]
 
-            real_positions.append(true_traj[i, t])
-            stage_positions.append(stage_pos[i])
+    #         real_positions.append(true_traj[i,t])
+    #         stage_positions.append(stage_pos[i])
 
-    real_positions = np.array(real_positions)
-    stage_positions = np.array(stage_positions)
+    # real_positions = np.array(real_positions)
+    # stage_positions = np.array(stage_positions)
 
-    '''
-    # Plot the results
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(real_positions[:, 0], real_positions[:, 1], real_positions[:, 2], label='True Particle Trajectory')
-    ax.plot(stage_positions[:, 0], stage_positions[:, 1], stage_positions[:, 2], '--', label='Stage Trajectory')
-    ax.set_xlabel('X (μm)')
-    ax.set_ylabel('Y (μm)')
-    ax.set_zlabel('Z (μm)')
-    ax.legend()
-    ax.set_title('3D LQG Particle Tracking')
-    plt.show()
-    '''
-    # (Optional) Plot tracking error over time
-    error = np.linalg.norm(real_positions - stage_positions, axis=1)
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.plot(real_positions[:, 0], real_positions[:, 1], real_positions[:, 2], label='True Particle Trajectory')
+    # ax.plot(stage_positions[:, 0], stage_positions[:, 1], stage_positions[:, 2], '--', label='Stage Trajectory')
+    # ax.set_xlabel('X (μm)')
+    # ax.set_ylabel('Y (μm)')
+    # ax.set_zlabel('Z (μm)')
+    # ax.legend()
+    # ax.set_title('3D LQG Particle Tracking')
+    # plt.show()
 
-    plt.figure()
-    plt.plot(error)
+    # Plot tracking error over time(This one only work for single particle)
+    # error = np.linalg.norm(real_positions - stage_positions, axis=1)
+
+    # plt.figure()
+    # plt.plot(error)
+    # plt.xlabel('Time Step')
+    # plt.ylabel('Tracking Error (μm)')
+    # plt.title('Tracking Error Over Time')
+    # plt.grid()
+    # plt.show()
+
+    # Error Plotting
+    # Compute per-particle tracking error
+    errors = np.linalg.norm(results['true_particles'] - results['true_stage'], axis=2)  # shape (N, T)
+
+    # Compute mean error across particles at each time step
+    mean_error = np.mean(errors, axis=0)  # shape (T,)
+
+    # Plot
+    plt.figure(figsize=(12, 8))
+
+    # Plot each particle separately
+    for i in range(errors.shape[0]):
+        plt.plot(errors[i], label=f'Particle {i+1}', alpha=0.6)
+
+    # Plot mean error (bold line)
+    plt.plot(mean_error, 'k-', linewidth=2.5, label='Mean Tracking Error')
+
     plt.xlabel('Time Step')
     plt.ylabel('Tracking Error (μm)')
-    plt.title('Tracking Error Over Time')
-    plt.grid()
+    plt.title('Tracking Error Over Time (Per Particle + Mean)')
+    plt.legend()
+    plt.grid(True)
     plt.show()
 
     return results
@@ -167,12 +185,12 @@ if __name__ == "__main__":
 
     sim = BrownianParticleSimulator(
         num_particles=1,
-        duration=1,
+        duration=100,
         fps=30,
         temperature=300,
         viscosity=0.001,
         particle_radius=5e-7,
-        bounds=[0, 20, 0, 20, 0, 10],
+        bounds=[0, 50, 0, 50, 0, 50],
         drift=[0.1, 0.05, 0.02]
     )
 
@@ -188,14 +206,14 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
     for i in range(N):
-        ax.plot(results['true_particles'][i, :, 0],
-                results['true_particles'][i, :, 1],
-                results['true_particles'][i, :, 2],
-                label=f'Particle {i + 1} True')
-        ax.plot(results['true_stage'][i, :, 0],
-                results['true_stage'][i, :, 1],
-                results['true_stage'][i, :, 2],
-                '--', label=f'Particle {i + 1} Stage')
+        ax.plot(results['true_particles'][i,:,0],
+                results['true_particles'][i,:,1],
+                results['true_particles'][i,:,2],
+                label=f'Particle {i+1} True')
+        ax.plot(results['true_stage'][i,:,0],
+                results['true_stage'][i,:,1],
+                results['true_stage'][i,:,2],
+                '--', label=f'Particle {i+1} Stage')
     ax.set_xlabel('X (μm)')
     ax.set_ylabel('Y (μm)')
     ax.set_zlabel('Z (μm)')
@@ -204,6 +222,6 @@ if __name__ == "__main__":
     plt.show()
 
     errors = results['est_particles'] - results['true_particles']
-    rmse = np.sqrt(np.mean(np.sum(errors ** 2, axis=2), axis=1))
+    rmse = np.sqrt(np.mean(np.sum(errors**2, axis=2), axis=1))
     for i, r in enumerate(rmse, 1):
         print(f"Particle {i} RMSE: {r:.3f} μm")
