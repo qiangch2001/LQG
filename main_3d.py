@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
     plt.show()
 
-
+    # Compute and print RMSE
     errors = results['est_particles'] - results['true_particles']
     rmse = np.sqrt(np.mean(np.sum(errors**2, axis=2), axis=1))
     for i, r in enumerate(rmse, 1):
