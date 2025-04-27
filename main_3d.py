@@ -93,10 +93,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     controllers = [LQGController(Ao, Bo, H, Q_kf, R_kf,
                                  lambda_x=lambda_x, lambda_u=lambda_u)
                    for _ in range(N)]
-
-    # real_positions = []
-    # stage_positions = []
-
+                             
     for i, ctrl in enumerate(controllers):
         results['true_particles'][i,0] = true_traj[i,0]
         results['true_stage'][i,0] = stage_pos[i]
@@ -110,13 +107,22 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
 
     for t in range(1, T):
         for i, ctrl in enumerate(controllers):
+
+            # KF predict
             ctrl.predict(results['control_inputs'][i,t-1])
+
+            # Measure
             true_rel = true_traj[i,t] - stage_pos[i]
             meas = true_rel + np.random.normal(0, measurement_noise, 3)
+            
+            # KF update
             ctrl.update(meas)
+
+            # Control
             u = ctrl.control()
             results['control_inputs'][i,t] = u
 
+            # Apply to stage
             stage_pos[i] += u * dt
             results['true_stage'][i,t] = stage_pos[i]
             results['true_particles'][i,t] = true_traj[i,t]
@@ -125,60 +131,8 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
             results['est_particles'][i,t] = [est[1], est[4], est[7]]
             results['est_stage'][i,t] = [est[0], est[3], est[6]]
 
-    #         real_positions.append(true_traj[i,t])
-    #         stage_positions.append(stage_pos[i])
-
-    # real_positions = np.array(real_positions)
-    # stage_positions = np.array(stage_positions)
-
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    # ax.plot(real_positions[:, 0], real_positions[:, 1], real_positions[:, 2], label='True Particle Trajectory')
-    # ax.plot(stage_positions[:, 0], stage_positions[:, 1], stage_positions[:, 2], '--', label='Stage Trajectory')
-    # ax.set_xlabel('X (μm)')
-    # ax.set_ylabel('Y (μm)')
-    # ax.set_zlabel('Z (μm)')
-    # ax.legend()
-    # ax.set_title('3D LQG Particle Tracking')
-    # plt.show()
-
-    # Plot tracking error over time(This one only work for single particle)
-    # error = np.linalg.norm(real_positions - stage_positions, axis=1)
-
-    # plt.figure()
-    # plt.plot(error)
-    # plt.xlabel('Time Step')
-    # plt.ylabel('Tracking Error (μm)')
-    # plt.title('Tracking Error Over Time')
-    # plt.grid()
-    # plt.show()
-
-    # Error Plotting
-    # Compute per-particle tracking error
-    # errors = np.linalg.norm(results['true_particles'] - results['true_stage'], axis=2)  # shape (N, T)
-
-    # # Compute mean error across particles at each time step
-    # mean_error = np.mean(errors, axis=0)  # shape (T,)
-
-    # # Plot
-    # plt.figure(figsize=(12, 8))
-
-    # # Plot each particle separately
-    # for i in range(errors.shape[0]):
-    #     plt.plot(errors[i], label=f'Particle {i+1}', alpha=0.6)
-
-    # # Plot mean error (bold line)
-    # plt.plot(mean_error, 'k-', linewidth=2.5, label='Mean Tracking Error')
-
-    # plt.xlabel('Time Step')
-    # plt.ylabel('Tracking Error (μm)')
-    # plt.title('Tracking Error Over Time (Per Particle + Mean)')
-    # plt.legend()
-    # plt.grid(True)
-    # plt.show()
-
-
     return results
+
 
 
 if __name__ == "__main__":
