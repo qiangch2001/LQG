@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D  # for 3D plots
 
-class BrownianParticleSimulator3D:
+class BrownianParticleSimulator:
     def reset(self):
         """
         Initialize particle positions randomly within bounds
@@ -18,22 +19,9 @@ class BrownianParticleSimulator3D:
         self.current_frame = 1
 
     def __init__(
-        self, num_particles=5, duration=10, fps=30, temperature=300, viscosity=0.001, particle_radius=0.1e-6,
+        self, num_particles=3, duration=10, fps=30, temperature=300, viscosity=0.001, particle_radius=0.1e-6,
         bounds=None, drift=None
     ):
-        """
-        Initialize the Brownian motion simulator in 3D
-
-        Parameters:
-        - num_particles: Number of particles to simulate
-        - duration: Total simulation time in seconds
-        - fps: Frames per second for animation
-        - temperature: Temperature in Kelvin
-        - viscosity: Fluid viscosity in Pa·s (water ≈ 0.001)
-        - particle_radius: Particle radius in meters
-        - bounds: [xmin, xmax, ymin, ymax, zmin, zmax] in micrometers
-        - drift: Optional drift velocity [vx, vy, vz] in μm/s
-        """
         # Physical constants
         self.k_B = 1.380649e-23  # Boltzmann constant (J/K)
 
@@ -49,33 +37,29 @@ class BrownianParticleSimulator3D:
         self.eta = viscosity
         self.radius = particle_radius
 
-        # Calculate diffusion coefficient (D) from Stokes-Einstein equation
-        self.D = self.k_B * self.T / (6 * np.pi * self.eta * self.radius)  # in m²/s
-        self.D *= 1e12  # convert to μm²/s
+        # Calculate diffusion coefficient (D)
+        self.D = self.k_B * self.T / (6 * np.pi * self.eta * self.radius)  # m^2/s
+        self.D *= 1e12  # to um^2/s
 
-        # Set bounds (default 100×100×100 μm field of view)
+        # Bounds [xmin, xmax, ymin, ymax, zmin, zmax]
         self.bounds = bounds if bounds is not None else [0, 100, 0, 100, 0, 100]
 
-        # Set drift (optional)
+        # Drift velocity
         self.drift = np.array(drift) * self.dt if drift is not None else np.zeros(3)
 
-        # Initialize positions
+        # Initialize
         self.reset()
 
     def step(self):
         """
         Advance the simulation by one time step
         """
-        # Random displacements (Brownian motion)
         displacements = np.sqrt(2 * self.D * self.dt) * np.random.randn(self.num_particles, 3)
-
-        # Add drift if specified
         displacements += self.drift
 
-        # Update positions
         new_positions = self.positions + displacements
 
-        # Apply boundary conditions (reflective)
+        # Reflective boundaries
         for i in range(self.num_particles):
             for j in range(3):
                 if new_positions[i, j] < self.bounds[2 * j]:
@@ -85,21 +69,20 @@ class BrownianParticleSimulator3D:
 
         self.positions = new_positions
 
-        # Store trajectory
         if self.current_frame < self.total_frames:
             self.trajectories[:, self.current_frame, :] = self.positions.copy()
             self.current_frame += 1
 
     def simulate(self):
         """
-        Run complete simulation
+        Run the full simulation
         """
         for _ in range(1, self.total_frames):
             self.step()
         return self.trajectories
 
     def plot_trajectories(self):
-        """Plot all trajectories on a 3D figure"""
+        """Plot all trajectories in 3D"""
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
 
@@ -110,78 +93,31 @@ class BrownianParticleSimulator3D:
             y = self.trajectories[i, :, 1]
             z = self.trajectories[i, :, 2]
             ax.plot(x, y, z, '-', color=colors[i], alpha=0.7, label=f'Particle {i + 1}')
-            ax.scatter(x[0], y[0], z[0], color=colors[i], s=100, marker='o')
-            ax.scatter(x[-1], y[-1], z[-1], color=colors[i], s=100, marker='x')
+            ax.scatter(x[0], y[0], z[0], color=colors[i], marker='o')
+            ax.scatter(x[-1], y[-1], z[-1], color=colors[i], marker='x')
 
         ax.set_xlim(self.bounds[0], self.bounds[1])
         ax.set_ylim(self.bounds[2], self.bounds[3])
         ax.set_zlim(self.bounds[4], self.bounds[5])
-        ax.set_xlabel('X position (μm)')
-        ax.set_ylabel('Y position (μm)')
-        ax.set_zlabel('Z position (μm)')
+        ax.set_xlabel('X (μm)')
+        ax.set_ylabel('Y (μm)')
+        ax.set_zlabel('Z (μm)')
         ax.set_title('3D Brownian Motion Trajectories')
         ax.legend()
-        plt.show()
 
-    def animate(self, trajectories=None):
-        """Create an animation of the particle motion in 3D"""
-        if trajectories is None:
-            trajectories = self.trajectories
 
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlim(self.bounds[0], self.bounds[1])
-        ax.set_ylim(self.bounds[2], self.bounds[3])
-        ax.set_zlim(self.bounds[4], self.bounds[5])
-        ax.set_xlabel('X position (μm)')
-        ax.set_ylabel('Y position (μm)')
-        ax.set_zlabel('Z position (μm)')
-        ax.set_title('3D Brownian Motion Simulation')
-
-        colors = plt.cm.viridis(np.linspace(0, 1, self.num_particles))
-        particles = [ax.plot([], [], [], 'o', color=colors[i], markersize=8,
-                             label=f'Particle {i + 1}')[0] for i in range(self.num_particles)]
-        paths = [ax.plot([], [], [], '-', color=colors[i], alpha=0.5, linewidth=1)[0]
-                 for i in range(self.num_particles)]
-
-        def init():
-            for particle, path in zip(particles, paths):
-                particle.set_data([], [])
-                particle.set_3d_properties([])
-                path.set_data([], [])
-                path.set_3d_properties([])
-            return particles + paths
-
-        def update(frame):
-            for i, (particle, path) in enumerate(zip(particles, paths)):
-                x = trajectories[i, :frame, 0]
-                y = trajectories[i, :frame, 1]
-                z = trajectories[i, :frame, 2]
-                particle.set_data(x[-1:], y[-1:])
-                particle.set_3d_properties(z[-1:])
-                path.set_data(x, y)
-                path.set_3d_properties(z)
-            return particles + paths
-
-        ani = FuncAnimation(fig, update, frames=self.total_frames, init_func=init, blit=True, interval=50)
-        plt.legend()
-        return ani
-
+# ===== Example usage =====
 if __name__ == "__main__":
-    # Example usage
-    sim = BrownianParticleSimulator3D(
-        num_particles=1,
-        duration=5,  # 5 seconds simulation
-        fps=20,  # 20 frames per second
-        temperature=300,  # Room temperature (300K)
-        viscosity=0.001,  # Water viscosity (0.001 Pa·s)
-        particle_radius=0.1e-6,  # 100 nm particles
-        bounds=[0, 20, 0, 20, 0, 10],  # 50×50×50 μm field of view
-        drift=[0.1, 0.05, 0.02]  # Drift in x, y, z (μm/s)
+    sim = BrownianParticleSimulator(
+        num_particles=3,
+        duration=5,
+        fps=20,
+        temperature=300,
+        viscosity=0.001,
+        particle_radius=0.1e-6,
+        bounds=[0, 50, 0, 50, 0, 50],
+        drift=[0.1, 0.05, 0.02]
     )
 
-    # Run simulation
     trajectories = sim.simulate()
-
-    # Display animation
     sim.plot_trajectories()
