@@ -87,7 +87,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     Q_kf = np.eye(9) * process_noise
     Q_kf[2, 2] = 2 * simulator.D * dt
     Q_kf[5, 5] = 2 * simulator.D * dt
-    Q_kf[8, 8] = 2 * simulator.D * dt
+    Q_kf[8, 8] = 4 * simulator.D * dt
     R_kf = np.eye(3) * measurement_noise
 
     controllers = [LQGController(Ao, Bo, H, Q_kf, R_kf,
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     sim = BrownianParticleSimulator(
         num_particles=1,
-        duration=200,
+        duration=1,
         fps=30,
         temperature=300,
         viscosity=0.001,
