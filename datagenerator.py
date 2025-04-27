@@ -154,21 +154,21 @@ class BrownianParticleSimulator:
         plt.legend()
         return ani
 
+if __name__ == "__main__":
+    # Example usage
+    sim = BrownianParticleSimulator(
+        num_particles=5,
+        duration=5,  # 30 second simulation
+        fps=20,  # 20 frames per second
+        temperature=300,  # Room temperature (300K)
+        viscosity=0.001,  # Water viscosity (0.001 Pa·s)
+        particle_radius=0.1e-6,  # 100 nm particles
+        bounds=[0, 50, 0, 50],  # 50×50 μm field of view
+        drift=[0.1, 0.05]  # Slight drift in x and y (μm/s)
+    )
 
-# Example usage
-sim = BrownianParticleSimulator(
-    num_particles=5,
-    duration=5,  # 30 second simulation
-    fps=20,  # 20 frames per second
-    temperature=300,  # Room temperature (300K)
-    viscosity=0.001,  # Water viscosity (0.001 Pa·s)
-    particle_radius=0.1e-6,  # 100 nm particles
-    bounds=[0, 50, 0, 50],  # 50×50 μm field of view
-    drift=[0.1, 0.05]  # Slight drift in x and y (μm/s)
-)
+    # Run simulation
+    trajectories = sim.simulate()
 
-# Run simulation
-trajectories = sim.simulate()
-
-# Display animation
-sim.plot_trajectories()
+    # Display animation
+    sim.plot_trajectories()
