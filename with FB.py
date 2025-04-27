@@ -129,6 +129,9 @@ def track_particles_lqg_with_fb(simulator, sampling_radius=10, num_samples=5,
                                   lambda_x=lambda_x, lambda_u=lambda_u)
                    for _ in range(N)]
 
+    real_positions = []
+    estimated_positions = []
+
     # Initial loop
     for i, ctrl in enumerate(controllers):
         results['true_particles'][i,0] = true_traj[i,0]
@@ -190,9 +193,32 @@ def track_particles_lqg_with_fb(simulator, sampling_radius=10, num_samples=5,
             results['true_stage'][i,t] = stage_pos[i]
             results['true_particles'][i,t] = true_traj[i,t]
             results['measured'][i,t] = np.array([x_fb, y_fb]) if 'x_fb' in locals() else meas + stage_pos[i]
+
             est = ctrl.x_hat
             results['est_particles'][i,t] = [est[1], est[4]]
             results['est_stage'][i,t] = [est[0], est[3]]
+
+            current_true_position = true_traj[i,t]
+            current_estimate = np.array([est[1], est[4]])
+
+            real_positions.append(current_true_position)
+            estimated_positions.append(current_estimate)
+
+    real_positions = np.array(real_positions)
+    estimated_positions = np.array(estimated_positions)
+
+
+    # Plot real vs estimated trajectories
+    plt.figure()
+    plt.plot(real_positions[:, 0], real_positions[:, 1], label='True Particle Trajectory')
+    plt.plot(estimated_positions[:, 0], estimated_positions[:, 1], '--', label='Estimated Trajectory')
+    plt.xlabel('X position (μm)')
+    plt.ylabel('Y position (μm)')
+    plt.legend()
+    plt.title('2D FB-LQG Particle Tracking')
+    plt.grid()
+    plt.axis('equal')  # Make X and Y axis same scale
+    plt.show()
 
     return results
 
@@ -249,3 +275,4 @@ if __name__ == "__main__":
     rmse = np.sqrt(np.mean(np.sum(errors**2, axis=2), axis=1))
     for i, r in enumerate(rmse, 1):
         print(f"Particle {i} RMSE: {r:.3f} μm")
+
