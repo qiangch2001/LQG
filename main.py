@@ -158,8 +158,8 @@ if __name__ == "__main__":
     # Run LQG tracking
     results = track_particles_lqg(
         sim,
-        lambda_x=1.0,
-        lambda_u=0.1,
+        lambda_x=16.0,
+        lambda_u=0.2,
         process_noise=0.1,
         measurement_noise=0.5
     )
