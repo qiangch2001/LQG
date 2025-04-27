@@ -1,26 +1,37 @@
 import numpy as np
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 class LQGController:
+    """
+    Implements LQG: Kalman Filter state estimator combined with LQR control.
+    """
     def __init__(self, A, B, H, Q_kf, R_kf, lambda_x=1.0, lambda_u=0.1):
-        self.A = A
-        self.B = B
-        self.H = H
-        self.Q_kf = Q_kf
-        self.R_kf = R_kf
-        self.lambda_x = lambda_x
-        self.lambda_u = lambda_u
+        # System matrices
+        self.A = A                # State transition (Ao)
+        self.B = B                # Control input (Bo)
+        self.H = H                # Measurement matrix
+        # Kalman filter covariances
+        self.Q_kf = Q_kf          # Process noise
+        self.R_kf = R_kf          # Measurement noise
+        # LQR weights
+        self.lambda_x = lambda_x  # state error weight
+        self.lambda_u = lambda_u  # control effort weight
 
+        # Dimensions
         self.n = A.shape[0]
         self.m = B.shape[1]
 
+        # Precompute LQR gain
         self.G = self._compute_lqr_gain()
 
+        # Initialize KF state and covariance
         self.x_hat = np.zeros((self.n,))
         self.P = np.eye(self.n)
 
     def _compute_lqr_gain(self, max_iters=1000, tol=1e-6):
+        # Build Q_lqr and R_lqr for full state
         Hx = self.H
         Q_lqr = self.lambda_x * (Hx.T @ Hx)
         R_lqr = np.eye(self.m) * self.lambda_u
@@ -59,6 +70,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     true_traj = simulator.simulate()
     N, T, _ = true_traj.shape
 
+    # Storage
     results = {key: np.zeros_like(true_traj) for key in [
         'true_particles', 'true_stage',
         'measured', 'est_particles', 'est_stage'
@@ -68,6 +80,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     stage_pos = np.zeros((N, 3))
     dt = simulator.dt
 
+    # System matrices
     Ao = np.zeros((9, 9))
     for i in range(0, 9, 3):
         Ao[i, i] = 1
@@ -84,16 +97,19 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
         H[i, 3*i] = -1
         H[i, 3*i+1] = 1
 
+    # KF covariances
     Q_kf = np.eye(9) * process_noise
     Q_kf[2,2] = 2 * simulator.D * dt
     Q_kf[5,5] = 2 * simulator.D * dt
     Q_kf[8,8] = 4 * simulator.D * dt
     R_kf = np.diag([1, 1, 2]) * measurement_noise
 
+    # Instantiate controllers
     controllers = [LQGController(Ao, Bo, H, Q_kf, R_kf,
                                  lambda_x=lambda_x, lambda_u=lambda_u)
                    for _ in range(N)]
-                             
+
+    # Initial loop
     for i, ctrl in enumerate(controllers):
         results['true_particles'][i,0] = true_traj[i,0]
         results['true_stage'][i,0] = stage_pos[i]
@@ -105,6 +121,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
         results['est_particles'][i,0] = [est[1], est[4], est[7]]
         results['est_stage'][i,0] = [est[0], est[3], est[6]]
 
+    # Time loop
     for t in range(1, T):
         for i, ctrl in enumerate(controllers):
 
@@ -114,7 +131,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
             # Measure
             true_rel = true_traj[i,t] - stage_pos[i]
             meas = true_rel + np.random.normal(0, measurement_noise, 3)
-            
+
             # KF update
             ctrl.update(meas)
 
@@ -134,10 +151,9 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     return results
 
 
-
 if __name__ == "__main__":
     from datagenerator_3d import BrownianParticleSimulator
-
+    # Initialize simulator
     sim = BrownianParticleSimulator(
         num_particles=1,
         duration=100,
@@ -149,6 +165,7 @@ if __name__ == "__main__":
         drift=[0.1, 0.05, 0.02]
     )
 
+    # Run LQG tracking
     results = track_particles_lqg(
         sim,
         lambda_x=1.0,
@@ -194,7 +211,6 @@ if __name__ == "__main__":
     ax.legend()
     ax.set_title('True Particle Trajectories and Stage Tracking Paths (3D)')
 
-    # Only one show for both figures
     plt.show()
 
 
