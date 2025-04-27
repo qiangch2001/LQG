@@ -87,8 +87,8 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     Q_kf = np.eye(9) * process_noise
     Q_kf[2,2] = 2 * simulator.D * dt
     Q_kf[5,5] = 2 * simulator.D * dt
-    Q_kf[8,8] = 2 * simulator.D * dt
-    R_kf = np.eye(3) * measurement_noise
+    Q_kf[8,8] = 4 * simulator.D * dt
+    R_kf = np.diag([1, 1, 2]) * measurement_noise
 
     controllers = [LQGController(Ao, Bo, H, Q_kf, R_kf,
                                  lambda_x=lambda_x, lambda_u=lambda_u)
@@ -153,29 +153,30 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     # plt.grid()
     # plt.show()
 
-    # Error Plotting(use this version!)
+    # Error Plotting
     # Compute per-particle tracking error
-    errors = np.linalg.norm(results['true_particles'] - results['true_stage'], axis=2)  # shape (N, T)
+    # errors = np.linalg.norm(results['true_particles'] - results['true_stage'], axis=2)  # shape (N, T)
 
-    # Compute mean error across particles at each time step
-    mean_error = np.mean(errors, axis=0)  # shape (T,)
+    # # Compute mean error across particles at each time step
+    # mean_error = np.mean(errors, axis=0)  # shape (T,)
 
-    # Plot
-    plt.figure(figsize=(12, 8))
+    # # Plot
+    # plt.figure(figsize=(12, 8))
 
-    # Plot each particle separately
-    for i in range(errors.shape[0]):
-        plt.plot(errors[i], label=f'Particle {i+1}', alpha=0.6)
+    # # Plot each particle separately
+    # for i in range(errors.shape[0]):
+    #     plt.plot(errors[i], label=f'Particle {i+1}', alpha=0.6)
 
-    # Plot mean error (bold line)
-    plt.plot(mean_error, 'k-', linewidth=2.5, label='Mean Tracking Error')
+    # # Plot mean error (bold line)
+    # plt.plot(mean_error, 'k-', linewidth=2.5, label='Mean Tracking Error')
 
-    plt.xlabel('Time Step')
-    plt.ylabel('Tracking Error (μm)')
-    plt.title('Tracking Error Over Time (Per Particle + Mean)')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    # plt.xlabel('Time Step')
+    # plt.ylabel('Tracking Error (μm)')
+    # plt.title('Tracking Error Over Time (Per Particle + Mean)')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
+
 
     return results
 
@@ -202,9 +203,27 @@ if __name__ == "__main__":
         measurement_noise=0.5
     )
 
+    # Plot tracking error
+    fig1 = plt.figure(figsize=(12, 8))
+
+    errors = np.linalg.norm(results['true_particles'] - results['true_stage'], axis=2)
+    mean_error = np.mean(errors, axis=0)
+
+    for i in range(errors.shape[0]):
+        plt.plot(errors[i], label=f'Particle {i+1}', alpha=0.6)
+    plt.plot(mean_error, 'k-', linewidth=2.5, label='Mean Tracking Error')
+
+    plt.xlabel('Time Step')
+    plt.ylabel('Tracking Error (μm)')
+    plt.title('Tracking Error Over Time (Per Particle + Mean)')
+    plt.legend()
+    plt.grid(True)
+
+    # Plot 3D Trajectories
+    fig2 = plt.figure(figsize=(12, 8))
+    ax = fig2.add_subplot(111, projection='3d')
+
     N = results['true_particles'].shape[0]
-    fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(111, projection='3d')
     for i in range(N):
         ax.plot(results['true_particles'][i,:,0],
                 results['true_particles'][i,:,1],
@@ -214,12 +233,16 @@ if __name__ == "__main__":
                 results['true_stage'][i,:,1],
                 results['true_stage'][i,:,2],
                 '--', label=f'Particle {i+1} Stage')
+
     ax.set_xlabel('X (μm)')
     ax.set_ylabel('Y (μm)')
     ax.set_zlabel('Z (μm)')
     ax.legend()
     ax.set_title('True Particle Trajectories and Stage Tracking Paths (3D)')
+
+    # Only one show for both figures
     plt.show()
+
 
     errors = results['est_particles'] - results['true_particles']
     rmse = np.sqrt(np.mean(np.sum(errors**2, axis=2), axis=1))
