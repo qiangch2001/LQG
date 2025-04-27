@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
     sim = BrownianParticleSimulator(
         num_particles=1,
-        duration=5,
+        duration=100,
         fps=20,
         temperature=300,
         viscosity=0.001,
