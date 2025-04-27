@@ -1,4 +1,5 @@
 import numpy as np
+from datagenerator import BrownianParticleSimulator
 
 class LQGController:
     """
@@ -74,25 +75,26 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     ]}
     results['control_inputs'] = np.zeros((N, T, 2))
 
-    stage_pos = np.zeros((N, 2))
+    # Initialize stage positions to match the initial particle positions
+    stage_pos = true_traj[:, 0, :2]  # Set the initial stage position to the initial particle position
     dt = simulator.dt
 
     # System matrices
     Ao = np.array([
-        [1,0,0,0,0,0],
-        [0,1,dt,0,0,0],
-        [0,0,1,0,0,0],
-        [0,0,0,1,0,0],
-        [0,0,0,0,1,dt],
-        [0,0,0,0,0,1]
+        [1, 0, 0, 0, 0, 0],
+        [0, 1, dt, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, dt],
+        [0, 0, 0, 0, 0, 1]
     ])
-    Bo = np.array([[dt,0],[0,0],[0,0],[0,dt],[0,0],[0,0]])
-    H = np.array([[-1,1,0,0,0,0],[0,0,0,-1,1,0]])
+    Bo = np.array([[dt, 0], [0, 0], [0, 0], [0, dt], [0, 0], [0, 0]])
+    H = np.array([[-1, 1, 0, 0, 0, 0], [0, 0, 0, -1, 1, 0]])
 
     # KF covariances
     Q_kf = np.eye(6) * process_noise
-    Q_kf[2,2] = 2 * simulator.D * dt
-    Q_kf[5,5] = 2 * simulator.D * dt
+    Q_kf[2, 2] = 2 * simulator.D * dt
+    Q_kf[5, 5] = 2 * simulator.D * dt
     R_kf = np.eye(2) * measurement_noise
 
     # Instantiate controllers
@@ -102,56 +104,58 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
 
     # Initial loop
     for i, ctrl in enumerate(controllers):
-        results['true_particles'][i,0] = true_traj[i,0]
-        results['true_stage'][i,0] = stage_pos[i]
-        meas = true_traj[i,0] - stage_pos[i] + np.random.normal(0, measurement_noise, 2)
-        results['measured'][i,0] = meas + stage_pos[i]
+        results['true_particles'][i, 0] = true_traj[i, 0]
+        results['true_stage'][i, 0] = stage_pos[i]
+        meas = true_traj[i, 0, :2] - stage_pos[i] + np.random.normal(0, measurement_noise, 2)
+        results['measured'][i, 0] = meas + stage_pos[i]
         ctrl.x_hat = np.zeros(6)
         ctrl.update(meas)
         est = ctrl.x_hat
-        results['est_particles'][i,0] = [est[1], est[4]]
-        results['est_stage'][i,0] = [est[0], est[3]]
+        results['est_particles'][i, 0] = [est[1], est[4]]
+        results['est_stage'][i, 0] = [est[0], est[3]]
 
     # Time loop
     for t in range(1, T):
         for i, ctrl in enumerate(controllers):
             # KF predict
-            ctrl.predict(results['control_inputs'][i,t-1])
+            ctrl.predict(results['control_inputs'][i, t-1])
             # Measure
-            true_rel = true_traj[i,t] - stage_pos[i]
+            true_rel = true_traj[i, t, :2] - stage_pos[i]
             meas = true_rel + np.random.normal(0, measurement_noise, 2)
             # KF update
             ctrl.update(meas)
             # Control
             u = ctrl.control()
-            results['control_inputs'][i,t] = u
+            results['control_inputs'][i, t] = u
 
             # Apply to stage
             stage_pos[i] += u * dt
-            results['true_stage'][i,t] = stage_pos[i]
-            results['true_particles'][i,t] = true_traj[i,t]
-            results['measured'][i,t] = meas + stage_pos[i]
+            results['true_stage'][i, t] = stage_pos[i]
+            results['true_particles'][i, t] = true_traj[i, t]
+            results['measured'][i, t] = meas + stage_pos[i]
             est = ctrl.x_hat
-            results['est_particles'][i,t] = [est[1], est[4]]
-            results['est_stage'][i,t] = [est[0], est[3]]
+            results['est_particles'][i, t] = [est[1], est[4]]
+            results['est_stage'][i, t] = [est[0], est[3]]
 
     return results
+
+
+
 
 
 # ===== Test Script =====
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from datagenerator import BrownianParticleSimulator
 
     # Initialize simulator
     sim = BrownianParticleSimulator(
-        num_particles=3,
+        num_particles=1,
         duration=5,
         fps=20,
         temperature=300,
         viscosity=0.001,
         particle_radius=0.1e-6,
-        bounds=[0, 50, 0, 50],
+        bounds=[0, 20, 0, 20],
         drift=[0.1, 0.05]
     )
 
@@ -169,13 +173,13 @@ if __name__ == "__main__":
     plt.figure(figsize=(12, 8))
     for i in range(N):
         # True particle path
-        plt.plot(results['true_particles'][i,:,0],
-                 results['true_particles'][i,:,1],
-                 label=f'Particle {i+1} True')
+        plt.plot(results['true_particles'][i, :, 0],
+                 results['true_particles'][i, :, 1],
+                 label=f'Particle {i + 1} True')
         # Stage tracking path
-        plt.plot(results['true_stage'][i,:,0],
-                 results['true_stage'][i,:,1],
-                 '--', label=f'Particle {i+1} Stage')
+        plt.plot(results['true_stage'][i, :, 0],
+                 results['true_stage'][i, :, 1],
+                 '--', label=f'Particle {i + 1} Stage')
     plt.xlabel('X (μm)')
     plt.ylabel('Y (μm)')
     plt.title('True Particle Trajectories and Stage Tracking Paths')
@@ -185,6 +189,6 @@ if __name__ == "__main__":
 
     # Compute and print RMSE
     errors = results['est_particles'] - results['true_particles']
-    rmse = np.sqrt(np.mean(np.sum(errors**2, axis=2), axis=1))
+    rmse = np.sqrt(np.mean(np.sum(errors ** 2, axis=2), axis=1))
     for i, r in enumerate(rmse, 1):
         print(f"Particle {i} RMSE: {r:.3f} μm")
