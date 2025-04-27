@@ -131,18 +131,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     real_positions = np.array(real_positions)
     stage_positions = np.array(stage_positions)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(real_positions[:, 0], real_positions[:, 1], real_positions[:, 2], label='True Particle Trajectory')
-    ax.plot(stage_positions[:, 0], stage_positions[:, 1], stage_positions[:, 2], '--', label='Stage Trajectory')
-    ax.set_xlabel('X (μm)')
-    ax.set_ylabel('Y (μm)')
-    ax.set_zlabel('Z (μm)')
-    ax.legend()
-    ax.set_title('3D LQG Particle Tracking')
-    plt.show()
-
-    # (Optional) Plot tracking error over time
+    # Plot tracking error over time(This one only work for single particle)
     error = np.linalg.norm(real_positions - stage_positions, axis=1)
 
     plt.figure()
