@@ -159,11 +159,11 @@ class BrownianParticleSimulator:
 if __name__ == "__main__":
     sim = BrownianParticleSimulator(
         num_particles=5,
-        duration=5,  # 30 second simulation
-        fps=20,  # 20 frames per second
+        duration=100,  #100-second simulation
+        fps=30,  # 30 frames per second
         temperature=300,  # Room temperature (300K)
         viscosity=0.001,  # Water viscosity (0.001 Pa·s)
-        particle_radius=0.1e-6,  # 100 nm particles
+        particle_radius=2.5e-7,  # r=250 nm particles
         bounds=[0, 50, 0, 50],  # 50×50 μm field of view
         drift=[0.1, 0.05]  # Slight drift in x and y (μm/s)
     )
