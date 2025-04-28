@@ -177,9 +177,9 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
             z_samples[5] = current_stage_pos[2] - 20
             
             # Calculate intensities (simulated)
-            sigma_x = 15
-            sigma_y = 15
-            sigma_z = 15
+            sigma_x = 30
+            sigma_y = 30
+            sigma_z = 30
             dx = (x_samples - true_particle_pos[0])
             dy = (y_samples - true_particle_pos[1])
             dz = (z_samples - true_particle_pos[2])
@@ -202,8 +202,8 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
             true_rel = true_particle_pos - current_stage_pos
             meast = true_rel + np.random.normal(0, measurement_noise, 3)
 
-            print("fb", x_fb, y_fb, z_fb)
-            print("tp", true_particle_pos[0], true_particle_pos[1], true_particle_pos[2] + 2)
+            #print("fb", x_fb, y_fb, z_fb)
+            #print("tp", true_particle_pos[0], true_particle_pos[1], true_particle_pos[2] + 2)
 
             # KF update
             ctrl.update(measfb)
@@ -228,11 +228,11 @@ if __name__ == "__main__":
     from datagenerator_3d import BrownianParticleSimulator
     # Initialize simulator
     sim = BrownianParticleSimulator(
-        num_particles=3,
+        num_particles=1,
         duration=100,
         fps=30,
         temperature=300,
-        viscosity=0.01,
+        viscosity=0.001,
         particle_radius=5e-7,
         bounds=[0, 50, 0, 50, 0, 50],
         drift=[0.1, 0.05, 0.02]
@@ -276,7 +276,7 @@ if __name__ == "__main__":
         ax.plot(results['true_stage'][i,:,0],
                 results['true_stage'][i,:,1],
                 results['true_stage'][i,:,2],
-                '--', label=f'Particle {i+1} Stage')
+                label=f'Particle {i+1} Stage')
 
     ax.set_xlabel('X (μm)')
     ax.set_ylabel('Y (μm)')

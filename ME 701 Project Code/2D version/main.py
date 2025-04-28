@@ -210,7 +210,7 @@ if __name__ == "__main__":
         duration=100,
         fps=30,
         temperature=300,
-        viscosity=0.01,
+        viscosity=0.001,
         particle_radius=5e-7,
         bounds=[0, 50, 0, 50],
         drift=[0.1, 0.05]
@@ -219,8 +219,8 @@ if __name__ == "__main__":
     # Run LQG tracking
     results = track_particles_lqg(
         sim,
-        lambda_x=1.0,
-        lambda_u=0.1,
+        lambda_x=16.0,
+        lambda_u=0.2,
         process_noise=0.1,
         measurement_noise=0.5
     )

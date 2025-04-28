@@ -42,6 +42,7 @@ class BrownianParticleSimulator:
         # Calculate diffusion coefficient (D)
         self.D = self.k_B * self.T / (6 * np.pi * self.eta * self.radius)  # m^2/s
         self.D *= 1e12  # to um^2/s
+        print("D: ", self.D)
 
         # Bounds [xmin, xmax, ymin, ymax, zmin, zmax]
         self.bounds = bounds if bounds is not None else [0, 100, 0, 100, 0, 100]
