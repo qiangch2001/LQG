@@ -18,12 +18,12 @@ mean_rmse_matrix = np.zeros((len(lambda_x_values), len(lambda_u_values)))
 def run_single_simulation(lambda_x, lambda_u):
     sim = BrownianParticleSimulator(
         num_particles=1,
-        duration=5,
-        fps=20,
+        duration=100,
+        fps=30,
         temperature=300,
         viscosity=0.001,
-        particle_radius=0.1e-6,
-        bounds=[0, 20, 0, 20],
+        particle_radius=2.5e-7,
+        bounds=[0, 50, 0, 50],
         drift=[0.1, 0.05]
     )
 
