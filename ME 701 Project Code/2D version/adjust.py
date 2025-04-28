@@ -36,7 +36,7 @@ def run_single_simulation(lambda_x, lambda_u):
     )
 
     # Compute RMSE for the simulation
-    errors = results['est_particles'] - results['true_particles']
+    errors = results['true_particles'] - results['true_stage']
     rmse = np.sqrt(np.mean(np.sum(errors ** 2, axis=2), axis=1))
     return np.mean(rmse)  # Single particle, so directly take the mean
 
