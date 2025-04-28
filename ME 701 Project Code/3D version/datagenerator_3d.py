@@ -112,10 +112,10 @@ if __name__ == "__main__":
     sim = BrownianParticleSimulator(
         num_particles=3,
         duration=100,
-        fps=20,
+        fps=30,
         temperature=300,
         viscosity=0.001,
-        particle_radius=0.1e-6,
+        particle_radius=2.5e-7,
         bounds=[0, 50, 0, 50, 0, 50],
         drift=[0.1, 0.05, 0.02]
     )
