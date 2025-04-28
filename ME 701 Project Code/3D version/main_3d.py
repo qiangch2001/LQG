@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     plt.xlabel('Time Step')
     plt.ylabel('Tracking Error (μm)')
-    plt.title('Tracking Error Over Time (Per Particle + Mean)')
+    plt.title('Tracking Error Over Time')
     plt.legend()
     plt.grid(True)
 
