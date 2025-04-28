@@ -62,7 +62,32 @@ class LQGController:
 
     def control(self):
         return -self.G @ self.x_hat
+    
 
+def fluoro_bancroft(x_positions, y_positions, intensity_values, sigma_x, sigma_y, background):
+    # Remove background intensity
+    valid_intensity = np.maximum(intensity_values - background, 1e-6)
+    
+    # Calculate P2 parameter
+    P2 = 2 * (sigma_x ** 2) * np.log(valid_intensity)
+    
+    # Calculate alpha values
+    alpha = 0.5 * (x_positions ** 2 + y_positions ** 2 + P2)
+    
+    # Form system of equations
+    B = np.column_stack((x_positions, y_positions, np.ones_like(x_positions)))
+    
+    # Find pseudo-inverse
+    B_pseudo_inv = np.linalg.pinv(B)
+    
+    # Solve for position
+    pos = B_pseudo_inv @ alpha
+    
+    # Correct for non-isotropic PSF if necessary
+    Q = np.array([[1, 0, 0], [0, sigma_x / sigma_y, 0]])
+    estimated_position = Q @ pos
+    
+    return estimated_position[0], estimated_position[1]
 
 def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
                          process_noise=0.1, measurement_noise=0.5):
@@ -77,6 +102,9 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     results['control_inputs'] = np.zeros((N, T, 2))
 
     stage_pos = np.zeros((N, 2))
+    #print(stage_pos)
+    stage_pos[0] = true_traj[0,0,:]
+    #print(stage_pos)
     dt = simulator.dt
 
     # System matrices
@@ -95,7 +123,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
     Q_kf = np.eye(6) * process_noise
     Q_kf[2,2] = 2 * simulator.D * dt
     Q_kf[5,5] = 2 * simulator.D * dt
-    R_kf = np.eye(2) * measurement_noise
+    R_kf = np.eye(2) * simulator.D * 0.5
 
     # Instantiate controllers
     controllers = [LQGController(Ao, Bo, H, Q_kf, R_kf,
@@ -119,11 +147,45 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
         for i, ctrl in enumerate(controllers):
             # KF predict
             ctrl.predict(results['control_inputs'][i,t-1])
-            # Measure
-            true_rel = true_traj[i,t] - stage_pos[i]
-            meas = true_rel + np.random.normal(0, measurement_noise, 2)
+
+            # Generate sampling points around predicted position
+            true_particle_pos = true_traj[i,t]
+            current_stage_pos = stage_pos[i]
+            
+            # Generate circle of sampling points
+            angles = np.linspace(0, 2 * np.pi, 4, endpoint=False)
+            x_samples = current_stage_pos[0] + 10 * np.cos(angles)
+            y_samples = current_stage_pos[1] + 10 * np.sin(angles)
+            
+            # Calculate intensities (simulated)
+            dx = (x_samples - true_particle_pos[0])
+            dy = (y_samples - true_particle_pos[1])
+            spatial_factors = np.exp(-(dx ** 2 + dy ** 2) / (2 * (5 ** 2)))
+            signal = spatial_factors * 100  # Scale factor
+            background = 10  # Background level
+            intensity_values = signal + background + np.random.normal(0, measurement_noise, 4)
+
+            #print("true ", true_particle_pos, " xs ", x_samples, " ys ", y_samples)
+            
+            # Apply FB method
+            #try:
+            x_fb, y_fb = fluoro_bancroft(x_samples, y_samples, intensity_values, 
+                                           5, 5, background)
+                # Convert to relative coordinates
+            measfb = np.array([x_fb - current_stage_pos[0], y_fb - current_stage_pos[1]])
+            #except:
+                # Fallback to direct measurement with noise
+            true_rel = true_particle_pos - current_stage_pos
+            meast = true_rel + np.random.normal(0, measurement_noise, 2)
+
+            #print("fb", x_fb, y_fb)
+            #print(true_particle_pos[0], true_particle_pos[1])
+            
+            # # Measure
+            # true_rel = true_traj[i,t] - stage_pos[i]
+            # meas = true_rel + np.random.normal(0, measurement_noise, 2)
             # KF update
-            ctrl.update(meas)
+            ctrl.update(measfb)
             # Control
             u = ctrl.control()
             results['control_inputs'][i,t] = u
@@ -132,7 +194,7 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
             stage_pos[i] += u * dt
             results['true_stage'][i,t] = stage_pos[i]
             results['true_particles'][i,t] = true_traj[i,t]
-            results['measured'][i,t] = meas + stage_pos[i]
+            results['measured'][i,t] = measfb + stage_pos[i]
             est = ctrl.x_hat
             results['est_particles'][i,t] = [est[1], est[4]]
             results['est_stage'][i,t] = [est[0], est[3]]
@@ -144,11 +206,11 @@ def track_particles_lqg(simulator, lambda_x=1.0, lambda_u=0.1,
 if __name__ == "__main__":
     # Initialize simulator
     sim = BrownianParticleSimulator(
-        num_particles=3,
+        num_particles=1,
         duration=100,
         fps=30,
         temperature=300,
-        viscosity=0.001,
+        viscosity=0.01,
         particle_radius=5e-7,
         bounds=[0, 50, 0, 50],
         drift=[0.1, 0.05]
@@ -190,7 +252,7 @@ if __name__ == "__main__":
         # Stage path
         plt.plot(results['true_stage'][i,:,0],
                 results['true_stage'][i,:,1],
-                '--', label=f'Particle {i+1} Stage')
+                label=f'Particle {i+1} Stage')
 
     plt.xlabel('X position (μm)')
     plt.ylabel('Y position (μm)')

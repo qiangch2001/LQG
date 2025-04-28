@@ -52,6 +52,8 @@ class BrownianParticleSimulator:
         self.D = self.k_B * self.T / (6 * np.pi * self.eta * self.radius)  # in m²/s
         self.D *= 1e12  # convert to μm²/s
 
+        print("D - Coeff: ", self.D)
+
         # Set bounds (default 100×100 μm field of view)
         self.bounds = bounds if bounds is not None else [0, 100, 0, 100]
 

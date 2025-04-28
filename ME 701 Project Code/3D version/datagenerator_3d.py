@@ -33,7 +33,9 @@ class BrownianParticleSimulator:
         self.dt = 1 / fps
 
         # Physical parameters
-        self.T = temperature
+        # print(self.total_frames)
+        self.T = temperature#np.linspace(temperature-100.0, temperature+100.0, self.total_frames)#temperature
+        # print(self.T)
         self.eta = viscosity
         self.radius = particle_radius
 
@@ -54,6 +56,7 @@ class BrownianParticleSimulator:
         """
         Advance the simulation by one time step
         """
+        # print(self.D)
         displacements = np.sqrt(2 * self.D * self.dt) * np.random.randn(self.num_particles, 3)
         displacements += self.drift
 
@@ -77,7 +80,9 @@ class BrownianParticleSimulator:
         """
         Run the full simulation
         """
-        for _ in range(1, self.total_frames):
+        for i in range(1, self.total_frames):
+            # self.D = self.k_B * self.T[i] / (6 * np.pi * self.eta * self.radius)  # m^2/s
+            # self.D *= 1e12  # to um^2/s
             self.step()
         return self.trajectories
 
