@@ -149,7 +149,7 @@ if __name__ == "__main__":
         fps=30,
         temperature=300,
         viscosity=0.001,
-        particle_radius=5e-7,
+        particle_radius=2.5e-7,
         bounds=[0, 50, 0, 50],
         drift=[0.1, 0.05]
     )
@@ -203,7 +203,7 @@ if __name__ == "__main__":
 
 
     # Compute and print RMSE
-    errors = results['est_particles'] - results['true_particles']
+    errors = results['true_particles'] - results['true_stage']
     rmse = np.sqrt(np.mean(np.sum(errors**2, axis=2), axis=1))
     for i, r in enumerate(rmse, 1):
         print(f"Particle {i} RMSE: {r:.3f} μm")
